@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Scan sessions (photos + processed data - heavy, user-specific)
+scans/
+models/
+
+# ML model weights (auto-downloaded, not needed in repo)
+yolov8n.pt
+yolov8*.pt
+*.onnx
+*.pth
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables / secrets
+.env
+*.env
+
+# Logs
+*.log

@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>RoomDesigner v2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e13;--sur:#131820;--pan:#1a2029;--bor:#2a3545;
+  --acc:#4fffb0;--acc2:#4d9eff;--acc3:#ff6b6b;--warm:#ffb347;
+  --txt:#d4e0ee;--mut:#5a7090;
+  --fd:'Syne',sans-serif;--fm:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--fm);}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;}
+.hidden{display:none!important;}
+
+/* ── Header ── */
+.hdr{display:flex;align-items:center;gap:10px;padding:11px 16px;
+  background:var(--sur);border-bottom:1px solid var(--bor);flex-shrink:0;}
+.logo{font-family:var(--fd);font-weight:800;font-size:16px;color:#fff;}
+.logo em{color:var(--acc);font-style:normal;}
+.logo .v{color:var(--acc2);font-size:10px;font-weight:400;}
+.pill{font-size:9px;padding:2px 8px;border-radius:10px;border:1px solid var(--bor);
+  color:var(--mut);background:var(--pan);white-space:nowrap;}
+.pill.ok{color:var(--acc);border-color:var(--acc);}
+.pill.warn{color:var(--warm);border-color:var(--warm);}
+.pill.err{color:var(--acc3);border-color:var(--acc3);}
+.spacer{flex:1;}
+
+/* ── Buttons ── */
+.btn{display:block;width:100%;padding:13px;border-radius:10px;border:none;
+  font-family:var(--fd);font-weight:700;font-size:13px;cursor:pointer;
+  text-align:center;transition:.15s;letter-spacing:.3px;margin-bottom:8px;}
+.btn-g{background:var(--acc);color:#000;}
+.btn-b{background:var(--acc2);color:#fff;}
+.btn-r{background:transparent;color:var(--acc3);border:1.5px solid var(--acc3);}
+.btn-n{background:var(--pan);color:var(--txt);border:1px solid var(--bor);}
+.btn-sm{padding:8px 12px;font-size:11px;border-radius:7px;width:auto;margin:0;}
+.btn:disabled{opacity:.35;pointer-events:none;}
+
+/* ════════════ HOME ════════════ */
+#scrHome{justify-content:flex-start;padding:20px;overflow-y:auto;}
+.home-hero{text-align:center;margin:24px 0 20px;}
+.home-hero .icon{font-size:56px;margin-bottom:10px;}
+.home-hero h1{font-family:var(--fd);font-size:26px;font-weight:800;color:#fff;margin-bottom:4px;}
+.home-hero h1 em{color:var(--acc);font-style:normal;}
+.home-hero p{font-size:11px;color:var(--mut);line-height:1.6;max-width:320px;margin:0 auto;}
+.setup-card{background:var(--sur);border:1px solid var(--bor);border-radius:12px;
+  padding:18px;margin-bottom:14px;}
+.setup-card h3{font-family:var(--fd);font-size:12px;font-weight:700;color:var(--acc);margin-bottom:10px;
+  letter-spacing:1.5px;text-transform:uppercase;}
+.field{margin-bottom:11px;}
+.field label{font-size:10px;color:var(--mut);display:flex;justify-content:space-between;margin-bottom:5px;}
+.field label span{color:var(--acc);font-weight:600;}
+input[type=range]{width:100%;accent-color:var(--acc);}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{flex:1;min-width:60px;padding:9px 8px;border-radius:7px;background:var(--pan);
+  border:1px solid var(--bor);color:var(--mut);font-size:10px;text-align:center;cursor:pointer;transition:.15s;}
+.chip.sel{background:var(--acc);color:#000;border-color:var(--acc);font-weight:600;}
+.chip .ei{font-size:16px;display:block;margin-bottom:2px;}
+.server-status{font-size:10px;padding:8px 12px;background:var(--pan);border:1px solid var(--bor);
+  border-radius:6px;margin-bottom:12px;color:var(--mut);line-height:1.7;}
+.server-status .row{display:flex;justify-content:space-between;}
+.server-status strong{color:var(--txt);}
+
+/* ════════════ CAPTURE ════════════ */
+#scrCapture{flex-direction:column;}
+#camView{flex:1;background:#000;position:relative;overflow:hidden;}
+#camVideo{width:100%;height:100%;object-fit:cover;display:block;}
+.cam-overlay{position:absolute;inset:0;pointer-events:none;}
+.cam-corner{position:absolute;width:24px;height:24px;border:2px solid var(--acc);}
+.cam-corner.tl{top:12px;left:12px;border-right:none;border-bottom:none;}
+.cam-corner.tr{top:12px;right:12px;border-left:none;border-bottom:none;}
+.cam-corner.bl{bottom:12px;left:12px;border-right:none;border-top:none;}
+.cam-corner.br{bottom:12px;right:12px;border-left:none;border-top:none;}
+.cam-hint{position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  background:rgba(10,14,19,.85);border:1px solid var(--bor);border-radius:20px;
+  padding:6px 14px;font-size:10px;color:var(--txt);text-align:center;font-family:var(--fd);font-weight:600;}
+.photo-dot-track{position:absolute;bottom:50%;left:50%;transform:translate(-50%,50%);
+  width:280px;height:280px;pointer-events:none;display:none;}
+.photo-dot-track.show{display:block;}
+.photo-dot-track svg{width:100%;height:100%;}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;}
+.flash.on{animation:flash .3s;}
+@keyframes flash{0%{opacity:0}30%{opacity:.7}100%{opacity:0}}
+
+/* Capture bar */
+.cap-bar{background:var(--sur);border-top:1px solid var(--bor);padding:14px 18px;
+  display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.cap-info{flex:1;}
+.cap-main{font-family:var(--fd);font-weight:700;font-size:13px;color:var(--txt);}
+.cap-sub{font-size:10px;color:var(--mut);margin-top:2px;line-height:1.5;}
+.shutter-wrap{position:relative;}
+.shutter{width:68px;height:68px;border-radius:50%;background:var(--acc);border:none;cursor:pointer;
+  flex-shrink:0;transition:.1s;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 4px rgba(79,255,176,.2);}
+.shutter:active{transform:scale(.93);}
+.shutter-inner{width:54px;height:54px;border-radius:50%;background:#fff;opacity:.9;}
+.shutter:disabled{background:var(--mut);}
+.ring-svg{position:absolute;inset:0;transform:rotate(-90deg);pointer-events:none;}
+
+/* ════════════ PROCESSING ════════════ */
+#scrProc{justify-content:center;align-items:center;padding:20px;}
+.proc-card{background:var(--sur);border:1px solid var(--bor);border-radius:14px;
+  padding:28px 24px;width:100%;max-width:380px;text-align:center;}
+.proc-spin{width:64px;height:64px;border-radius:50%;border:3px solid var(--bor);
+  border-top-color:var(--acc);animation:spin 1s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.proc-card h2{font-family:var(--fd);font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;}
+.proc-stage{font-size:11px;color:var(--acc);margin-bottom:14px;min-height:18px;}
+.proc-bar-wrap{height:5px;background:var(--bor);border-radius:5px;overflow:hidden;margin-bottom:14px;}
+.proc-bar{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .5s;}
+.proc-facts{text-align:left;font-size:10px;color:var(--mut);line-height:1.9;padding:10px 12px;
+  background:var(--pan);border-radius:7px;border:1px solid var(--bor);}
+.proc-facts strong{color:var(--acc);}
+
+/* ════════════ DESIGNER ════════════ */
+#scrDesigner{flex-direction:column;}
+.designer-tabs{display:flex;background:var(--sur);border-bottom:1px solid var(--bor);flex-shrink:0;}
+.dtab{flex:1;padding:9px 4px;font-family:var(--fd);font-size:11px;font-weight:600;
+  text-align:center;cursor:pointer;color:var(--mut);border:none;background:none;
+  border-bottom:2px solid transparent;}
+.dtab.active{color:var(--acc);border-bottom-color:var(--acc);}
+
+#view3d{flex:1;display:flex;flex-direction:column;position:relative;}
+#canvas3d{display:block;width:100%;flex:1;cursor:grab;}
+#canvas3d:active{cursor:grabbing;}
+
+#fpView{flex:1;display:none;flex-direction:column;}
+#fpCanvas{flex:1;display:block;}
+
+/* Furniture drawer */
+.furn-drawer{background:var(--sur);border-top:1px solid var(--bor);flex-shrink:0;
+  max-height:190px;overflow-y:auto;}
+.fd-hdr{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid var(--bor);gap:6px;}
+.fd-hdr span{font-family:var(--fd);font-size:11px;font-weight:700;flex:1;}
+.furn-scroll{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;}
+.fc{background:var(--pan);border:1px solid var(--bor);border-radius:7px;
+  padding:7px 9px;text-align:center;cursor:pointer;flex-shrink:0;min-width:56px;}
+.fc:active{transform:scale(.94);}
+.fc .fci{font-size:20px;display:block;margin-bottom:1px;}
+.fc .fcn{font-size:8px;color:var(--mut);}
+
+.sel-bar{background:var(--pan);border-top:1px solid var(--acc2);padding:8px 12px;
+  display:none;flex-shrink:0;align-items:center;gap:8px;}
+.sel-bar.show{display:flex;}
+.sel-bar .sn{font-family:var(--fd);font-size:11px;font-weight:700;color:var(--acc2);flex:1;}
+.sel-bar input[type=range]{width:65px;accent-color:var(--acc2);}
+.sel-bar label{font-size:9px;color:var(--mut);}
+.sel-bar span{font-size:9px;color:var(--acc2);}
+.sel-bar .del{background:none;border:1px solid var(--acc3);color:var(--acc3);border-radius:4px;
+  padding:4px 8px;font-size:10px;cursor:pointer;}
+
+.ctrl-hint{position:absolute;bottom:6px;right:6px;background:rgba(10,14,19,.7);
+  border:1px solid var(--bor);border-radius:5px;padding:4px 8px;font-size:8px;color:var(--mut);line-height:1.6;}
+
+/* AI Modal */
+#aiModal{position:fixed;inset:0;background:rgba(10,14,19,.92);z-index:100;
+  display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
+#aiModal.show{display:flex;}
+.ai-card{background:var(--sur);border:1px solid var(--acc2);border-radius:14px;
+  padding:22px 20px;width:100%;max-width:380px;max-height:85vh;overflow-y:auto;}
+.ai-card h3{font-family:var(--fd);font-size:15px;font-weight:800;color:var(--acc2);margin-bottom:8px;}
+.ai-card h3 em{color:var(--acc);font-style:normal;}
+.ai-card p{font-size:11px;color:var(--mut);margin-bottom:14px;line-height:1.6;}
+.goal-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.gchip{flex:1;min-width:100px;padding:9px;border-radius:7px;background:var(--pan);
+  border:1px solid var(--bor);color:var(--txt);font-size:10px;text-align:center;cursor:pointer;}
+.gchip:active,.gchip.sel{background:var(--acc2);color:#fff;border-color:var(--acc2);}
+textarea#aiGoal{width:100%;background:var(--pan);border:1px solid var(--bor);border-radius:7px;
+  padding:10px;color:var(--txt);font-family:var(--fm);font-size:11px;resize:vertical;min-height:50px;margin-bottom:12px;}
+#aiStatus{font-size:11px;color:var(--acc);margin-bottom:10px;min-height:16px;}
+#aiResult{background:var(--pan);border:1px solid var(--bor);border-radius:7px;padding:10px;
+  margin-bottom:12px;font-size:10px;color:var(--txt);line-height:1.6;max-height:200px;overflow-y:auto;display:none;}
+#aiResult.show{display:block;}
+#aiResult strong{color:var(--acc);}
+
+/* Notification */
+#notif{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+  background:var(--pan);border:1px solid var(--bor);border-radius:7px;padding:8px 16px;
+  font-size:11px;color:var(--txt);z-index:999;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;}
+#notif.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- ════════ HOME ════════ -->
+<div class="screen" id="scrHome">
+  <div class="home-hero">
+    <div class="icon">🏠</div>
+    <h1>Room<em>Designer</em></h1>
+    <p>Scan your room → get measurements + furniture → arrange in 3D with AI help</p>
+  </div>
+
+  <div class="setup-card">
+    <h3>① Your Setup</h3>
+    <div class="field">
+      <label>Your height <span id="hVal">175 cm</span></label>
+      <input type="range" id="hSlider" min="140" max="210" value="175"/>
+    </div>
+    <div class="field">
+      <label>Room type</label>
+      <div class="chip-row" id="roomChips">
+        <div class="chip sel" data-room="bedroom"><span class="ei">🛏️</span>Bedroom</div>
+        <div class="chip" data-room="living"><span class="ei">🛋️</span>Living</div>
+        <div class="chip" data-room="office"><span class="ei">🖥️</span>Office</div>
+        <div class="chip" data-room="kitchen"><span class="ei">🍳</span>Kitchen</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <h3>② How It Works</h3>
+    <p style="font-size:10px;color:var(--mut);line-height:1.8;margin:0;">
+      📸 Stand in the centre, rotate slowly while taking 8 photos (one every 45°)<br/>
+      🤖 Laptop runs AI depth + object detection<br/>
+      🎨 You get a clean 3D room to rearrange<br/>
+      ✨ Ask the AI for layout suggestions
+    </p>
+  </div>
+
+  <div class="server-status" id="serverStatus">
+    <div class="row"><span>Server</span><strong id="sSrv">checking...</strong></div>
+    <div class="row"><span>Depth AI</span><strong id="sDpt">—</strong></div>
+    <div class="row"><span>YOLO</span><strong id="sYol">—</strong></div>
+    <div class="row"><span>Ollama</span><strong id="sOll">—</strong></div>
+  </div>
+
+  <button class="btn btn-g" onclick="startScan()">📷 Start Scanning</button>
+  <button class="btn btn-n" onclick="checkServer()">↻ Recheck Server</button>
+</div>
+
+<!-- ════════ CAPTURE ════════ -->
+<div class="screen hidden" id="scrCapture">
+  <div class="hdr">
+    <div class="logo">Room<em>Designer</em> <span class="v">v2</span></div>
+    <div class="spacer"></div>
+    <button class="btn btn-n btn-sm" onclick="showScreen('scrHome');stopCamera();">← Back</button>
+  </div>
+  <div id="camView">
+    <video id="camVideo" autoplay playsinline muted></video>
+    <div class="cam-overlay">
+      <div class="cam-corner tl"></div>
+      <div class="cam-corner tr"></div>
+      <div class="cam-corner bl"></div>
+      <div class="cam-corner br"></div>
+      <div class="cam-hint" id="camHint">Point at wall #1</div>
+    </div>
+    <div class="flash" id="flashEl"></div>
+  </div>
+  <div class="cap-bar">
+    <div class="shutter-wrap">
+      <svg class="ring-svg" viewBox="0 0 68 68" width="68" height="68">
+        <circle cx="34" cy="34" r="30" fill="none" stroke="#2a3545" stroke-width="4"/>
+        <circle cx="34" cy="34" r="30" fill="none" stroke="#4fffb0" stroke-width="4"
+          stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5" id="ringArc"/>
+      </svg>
+      <button class="shutter" id="shutterBtn" onclick="capturePhoto()">
+        <div class="shutter-inner"></div>
+      </button>
+    </div>
+    <div class="cap-info">
+      <div class="cap-main" id="capMain">Ready to capture</div>
+      <div class="cap-sub" id="capSub">Stand still. Rotate 45° after each shot.</div>
+    </div>
+    <button class="btn btn-b btn-sm" id="doneBtn" onclick="finishCapture()" disabled
+      style="padding:10px 8px;font-size:10px;min-width:60px;">Done<br/>✓</button>
+  </div>
+</div>
+
+<!-- ════════ PROCESSING ════════ -->
+<div class="screen hidden" id="scrProc">
+  <div class="hdr">
+    <div class="logo">Room<em>Designer</em></div>
+    <div class="spacer"></div>
+    <div class="pill" id="procPill">processing</div>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px;">
+    <div class="proc-card">
+      <div class="proc-spin" id="procSpin"></div>
+      <h2 id="procTitle">Analysing Your Room</h2>
+      <div class="proc-stage" id="procStage">Starting...</div>
+      <div class="proc-bar-wrap"><div class="proc-bar" id="procBar"></div></div>
+      <div class="proc-facts">
+        <strong>AI Pipeline:</strong><br/>
+        1. Depth Anything V2 measures distances<br/>
+        2. YOLOv8 detects furniture<br/>
+        3. Triangulates 3D positions<br/>
+        4. Builds clean room model
+      </div>
+      <button class="btn btn-g" id="openDesignerBtn" style="display:none;margin-top:14px;"
+        onclick="openDesigner()">✨ Open 3D Designer →</button>
+      <button class="btn btn-r" id="retryBtn" style="display:none;margin-top:8px;"
+        onclick="showScreen('scrHome')">← Start Over</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ DESIGNER ════════ -->
+<div class="screen hidden" id="scrDesigner">
+  <div class="hdr">
+    <div class="logo">Room<em>Designer</em></div>
+    <div class="pill ok" id="modelPill">—</div>
+    <div class="spacer"></div>
+    <button class="btn btn-sm" style="background:var(--acc2);color:#fff;padding:7px 11px;"
+      onclick="openAIModal()">✨ AI</button>
+  </div>
+
+  <div class="designer-tabs">
+    <button class="dtab active" onclick="switchTab('3d')">⬡ 3D View</button>
+    <button class="dtab" onclick="switchTab('fp')">⊞ Floor Plan</button>
+  </div>
+
+  <div id="view3d">
+    <canvas id="canvas3d"></canvas>
+    <div class="ctrl-hint">Drag→orbit · Pinch→zoom<br/>Tap obj→select · Drag→move</div>
+  </div>
+
+  <div id="fpView">
+    <canvas id="fpCanvas"></canvas>
+    <div style="padding:8px 12px;display:flex;gap:6px;background:var(--sur);border-top:1px solid var(--bor);">
+      <button class="btn btn-n btn-sm" onclick="renderFP()">↻ Refresh</button>
+      <button class="btn btn-n btn-sm" onclick="exportPNG()">↓ PNG</button>
+      <button class="btn btn-b btn-sm" onclick="exportJSON()">↓ JSON</button>
+    </div>
+  </div>
+
+  <div class="furn-drawer" id="furnDrawer">
+    <div class="fd-hdr">
+      <span>Add Furniture</span>
+      <button class="btn btn-n btn-sm" onclick="resetCam()">⊙ Reset</button>
+      <button class="btn btn-n btn-sm" onclick="showScreen('scrHome')">🏠 New</button>
+    </div>
+    <div class="furn-scroll" id="furnScroll"></div>
+  </div>
+
+  <div class="sel-bar" id="selBar">
+    <span class="sn" id="selName">—</span>
+    <label>Rot</label>
+    <input type="range" id="rotSlider" min="0" max="360" value="0" oninput="rotSel(this.value)"/>
+    <span id="rotVal">0°</span>
+    <button class="del" onclick="delSel()">✕</button>
+  </div>
+</div>
+
+<!-- ════════ AI MODAL ════════ -->
+<div id="aiModal">
+  <div class="ai-card">
+    <h3>✨ <em>Layout AI</em></h3>
+    <p>Ollama will suggest a better arrangement for your room.</p>
+    <div class="goal-chips" id="goalChips">
+      <div class="gchip" data-goal="Maximise walking space and comfort">Comfort flow</div>
+      <div class="gchip" data-goal="Arrange for best natural light usage">Light focus</div>
+      <div class="gchip" data-goal="Create a productive work/study zone">Work setup</div>
+      <div class="gchip" data-goal="Minimalist and clean aesthetic">Minimalist</div>
+      <div class="gchip" data-goal="Social/entertainment focus with seating facing TV">Social</div>
+    </div>
+    <textarea id="aiGoal" placeholder="Or describe your own goal..."></textarea>
+    <div id="aiStatus"></div>
+    <div id="aiResult"></div>
+    <button class="btn btn-b" id="aiAskBtn" onclick="askAI()">🧠 Ask Ollama</button>
+    <button class="btn btn-g" id="aiApplyBtn" style="display:none;" onclick="applyAI()">✓ Apply Layout</button>
+    <button class="btn btn-n" onclick="closeAIModal()">Cancel</button>
+  </div>
+</div>
+
+<div id="notif"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+const API = window.location.origin;
+let SID = null;
+let stream = null;
+let photos = 0;
+const TARGET = 8;
+const MIN    = 3;
+let roomModel = null;
+let aiSuggestion = null;
+
+// ═══════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
+let nt; function notify(m){ const e=document.getElementById('notif'); e.textContent=m; e.classList.add('show'); clearTimeout(nt); nt=setTimeout(()=>e.classList.remove('show'),2800); }
+
+// ═══════════════════════════════════════════════════
+//  HOME SETUP
+// ═══════════════════════════════════════════════════
+document.getElementById('hSlider').addEventListener('input', e=>{ document.getElementById('hVal').textContent = e.target.value+' cm'; });
+document.querySelectorAll('#roomChips .chip').forEach(c=>{
+  c.onclick = () => { document.querySelectorAll('#roomChips .chip').forEach(x=>x.classList.remove('sel')); c.classList.add('sel'); };
+});
+
+async function checkServer(){
+  try{
+    const r = await fetch(API+'/api/health');
+    const d = await r.json();
+    document.getElementById('sSrv').textContent = d.status;
+    document.getElementById('sDpt').textContent = d.depth_model;
+    document.getElementById('sYol').textContent = d.yolo_model;
+    document.getElementById('sOll').textContent = d.ollama;
+    document.getElementById('sSrv').style.color = 'var(--acc)';
+    [['sDpt',d.depth_model],['sYol',d.yolo_model],['sOll',d.ollama]].forEach(([id,v])=>{
+      const el = document.getElementById(id);
+      el.style.color = (v==='loaded'||v==='ok')?'var(--acc)':'var(--warm)';
+    });
+  }catch(e){
+    document.getElementById('sSrv').textContent = 'offline';
+    document.getElementById('sSrv').style.color = 'var(--acc3)';
+  }
+}
+checkServer();
+
+// ═══════════════════════════════════════════════════
+//  START SCAN
+// ═══════════════════════════════════════════════════
+async function startScan(){
+  const h = +document.getElementById('hSlider').value;
+  const room = document.querySelector('#roomChips .chip.sel').dataset.room;
+  try{
+    const r = await fetch(API+'/api/session/new', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({height_cm: h, room_type: room})});
+    const d = await r.json();
+    SID = d.sid;
+    photos = 0;
+    document.getElementById('doneBtn').disabled = true;
+    document.getElementById('ringArc').style.strokeDashoffset = 188.5;
+    await startCamera();
+    showScreen('scrCapture');
+    updateCapUI();
+  }catch(e){ notify('Server error: '+e.message); }
+}
+
+async function startCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:960}},
+      audio:false
+    });
+    document.getElementById('camVideo').srcObject = stream;
+  }catch(e){ notify('Camera: '+e.message); }
+}
+function stopCamera(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} }
+
+// ═══════════════════════════════════════════════════
+//  CAPTURE
+// ═══════════════════════════════════════════════════
+let capturing = false;
+async function capturePhoto(){
+  if(capturing) return;
+  const video = document.getElementById('camVideo');
+  if(!video.videoWidth){ notify('Camera not ready'); return; }
+  capturing = true;
+  const flash = document.getElementById('flashEl');
+  flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
+  const tmp = document.createElement('canvas');
+  tmp.width = video.videoWidth; tmp.height = video.videoHeight;
+  tmp.getContext('2d').drawImage(video,0,0);
+  tmp.toBlob(async blob=>{
+    const fd = new FormData();
+    fd.append('file', blob, `p_${photos}.jpg`);
+    try{
+      const r = await fetch(`${API}/api/session/${SID}/photo`, {method:'POST', body:fd});
+      if(r.ok){
+        photos++;
+        updateCapUI();
+        if(photos >= MIN) document.getElementById('doneBtn').disabled = false;
+      }
+    }catch(e){ notify('Upload fail: '+e.message); }
+    capturing = false;
+  },'image/jpeg', 0.85);
+}
+
+function updateCapUI(){
+  const pct = Math.min(photos/TARGET, 1);
+  document.getElementById('ringArc').style.strokeDashoffset = 188.5 * (1 - pct);
+  const angles = [0,45,90,135,180,225,270,315];
+  const nextAngle = angles[photos] !== undefined ? angles[photos] : 360;
+  if(photos===0){
+    document.getElementById('capMain').textContent = 'Ready — 8 photos needed';
+    document.getElementById('capSub').textContent = 'Stand in room centre\nTap shutter, then rotate 45°';
+    document.getElementById('camHint').textContent = '⬇ Start here (0°)';
+  } else if(photos < TARGET){
+    document.getElementById('capMain').textContent = `${photos} / ${TARGET} photos ✓`;
+    document.getElementById('capSub').textContent = `Rotate to ${nextAngle}° and shoot`;
+    document.getElementById('camHint').textContent = `📐 ${nextAngle}° ・ photo ${photos+1}`;
+  } else {
+    document.getElementById('capMain').textContent = `${photos} photos — done!`;
+    document.getElementById('capSub').textContent = 'Tap Done to analyse';
+    document.getElementById('camHint').textContent = '✓ Complete';
+  }
+}
+
+async function finishCapture(){
+  if(photos < MIN){ notify(`Need ≥${MIN} photos`); return; }
+  stopCamera();
+  showScreen('scrProc');
+  document.getElementById('procBar').style.width = '5%';
+  document.getElementById('procStage').textContent = 'Starting pipeline...';
+  try{
+    const r = await fetch(`${API}/api/session/${SID}/process`, {method:'POST'});
+    if(r.ok){
+      const d = await r.json();
+      roomModel = d.room_model;
+      procDone();
+    } else {
+      const err = await r.json();
+      procError(err.detail||'Unknown error');
+    }
+  }catch(e){ procError(e.message); }
+}
+
+let pollT = setInterval(async ()=>{
+  if(!SID) return;
+  try{
+    const r = await fetch(`${API}/api/session/${SID}`);
+    if(r.ok){
+      const d = await r.json();
+      if(d.status==='processing'){
+        document.getElementById('procBar').style.width = d.progress+'%';
+        document.getElementById('procStage').textContent = d.stage;
+      }
+    }
+  }catch(e){}
+}, 2000);
+
+function procDone(){
+  document.getElementById('procSpin').style.display = 'none';
+  document.getElementById('procTitle').textContent = 'Room Ready! 🎉';
+  document.getElementById('procStage').textContent = `Found ${roomModel.furniture.length} objects in ${roomModel.room.width_m}×${roomModel.room.depth_m}m room`;
+  document.getElementById('procBar').style.width = '100%';
+  document.getElementById('procPill').className = 'pill ok';
+  document.getElementById('openDesignerBtn').style.display = 'block';
+}
+function procError(msg){
+  document.getElementById('procSpin').style.display = 'none';
+  document.getElementById('procTitle').textContent = 'Something went wrong';
+  document.getElementById('procStage').textContent = msg.substring(0,100);
+  document.getElementById('procPill').className = 'pill err';
+  document.getElementById('retryBtn').style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════
+//  THREE.JS
+// ═══════════════════════════════════════════════════
+const FALLBACK_FURNS = [
+  {id:'bed',name:'Bed',icon:'🛏️',def_w:200,def_d:220,def_h:55,color:0x7b61ff},
+  {id:'sofa',name:'Sofa',icon:'🛋️',def_w:220,def_d:90,def_h:80,color:0xff9d4d},
+  {id:'chair',name:'Chair',icon:'🪑',def_w:60,def_d:60,def_h:90,color:0xff6b6b},
+  {id:'desk',name:'Desk',icon:'🖥️',def_w:140,def_d:70,def_h:75,color:0x4d9eff},
+  {id:'table',name:'Table',icon:'🪵',def_w:120,def_d:80,def_h:75,color:0xffd166},
+  {id:'wardrobe',name:'Wardrobe',icon:'🗄️',def_w:120,def_d:60,def_h:200,color:0x23d18b},
+  {id:'shelf',name:'Shelf',icon:'📚',def_w:100,def_d:30,def_h:180,color:0xf7c948},
+  {id:'tv',name:'TV',icon:'📺',def_w:120,def_d:15,def_h:70,color:0x00e5ff},
+  {id:'plant',name:'Plant',icon:'🌿',def_w:40,def_d:40,def_h:80,color:0x4fffb0},
+];
+
+const c3 = document.getElementById('canvas3d');
+const rend = new THREE.WebGLRenderer({canvas:c3,antialias:true});
+rend.setPixelRatio(Math.min(devicePixelRatio,2));
+rend.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0e13);
+
+const cam = new THREE.PerspectiveCamera(50,1,1,30000);
+scene.add(new THREE.AmbientLight(0x334455, 1.2));
+const dLight = new THREE.DirectionalLight(0xffffff, 0.85);
+dLight.position.set(300,800,400); dLight.castShadow=true; scene.add(dLight);
+
+// Floor + walls (built when room loads)
+let roomGroup = new THREE.Group(); scene.add(roomGroup);
+const furnObjs = [];
+let selObj = null;
+let dragFurn = false;
+
+function resize3d(){ const w=c3.clientWidth,h=c3.clientHeight||1; rend.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); }
+new ResizeObserver(resize3d).observe(c3);
+(function loop(){requestAnimationFrame(loop);rend.render(scene,cam);})();
+
+// Orbit
+let dr=false,rdr=false,px=0,py=0,rX=0.5,rY=0,dist=900,pX=0,pY=100;
+function upCam(){cam.position.x=pX+dist*Math.sin(rY)*Math.cos(rX);cam.position.y=pY+dist*Math.sin(rX);cam.position.z=dist*Math.cos(rY)*Math.cos(rX);cam.lookAt(pX,pY*0.3,0);}
+upCam();
+
+c3.addEventListener('mousedown',e=>{
+  if(e.button===0&&!e.shiftKey){dr=true;rdr=false;}else{dr=true;rdr=true;}
+  px=e.clientX;py=e.clientY;
+  // Check furniture click
+  const r=c3.getBoundingClientRect();
+  const mv=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+  const rc=new THREE.Raycaster(); rc.setFromCamera(mv,cam);
+  const h=rc.intersectObjects(furnObjs,false);
+  if(h.length){ e.stopPropagation(); selectFurn(h[0].object); dragFurn=true; dr=false; }
+  else if(!dr) deselFurn();
+});
+window.addEventListener('mouseup',()=>{dr=false;dragFurn=false;});
+window.addEventListener('mousemove',e=>{
+  if(dragFurn && selObj){
+    const r=c3.getBoundingClientRect();
+    const mv=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+    const rc=new THREE.Raycaster(); rc.setFromCamera(mv,cam);
+    // Intersect with floor plane (y=0)
+    const floor = new THREE.Plane(new THREE.Vector3(0,1,0),0);
+    const pt = new THREE.Vector3();
+    rc.ray.intersectPlane(floor, pt);
+    if(pt){ selObj.position.x = pt.x; selObj.position.z = pt.z; }
+    return;
+  }
+  if(!dr)return;
+  const dx=e.clientX-px,dy=e.clientY-py;
+  if(rdr){pX-=dx*0.5;pY+=dy*0.5;}else{rY+=dx*0.005;rX-=dy*0.005;rX=Math.max(0.05,Math.min(1.5,rX));}
+  px=e.clientX;py=e.clientY;upCam();
+});
+c3.addEventListener('wheel',e=>{dist=Math.max(100,Math.min(5000,dist+e.deltaY*0.6));upCam();},{passive:true});
+c3.addEventListener('contextmenu',e=>e.preventDefault());
+
+// Touch
+let tch=[];
+c3.addEventListener('touchstart',e=>{
+  tch=[...e.touches];
+  if(e.touches.length===1){
+    const r=c3.getBoundingClientRect();
+    const t=e.touches[0];
+    const mv=new THREE.Vector2(((t.clientX-r.left)/r.width)*2-1,-((t.clientY-r.top)/r.height)*2+1);
+    const rc=new THREE.Raycaster(); rc.setFromCamera(mv,cam);
+    const h=rc.intersectObjects(furnObjs,false);
+    if(h.length){ selectFurn(h[0].object); dragFurn=true; }
+    else deselFurn();
+  }
+});
+c3.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(dragFurn && selObj && e.touches.length===1){
+    const r=c3.getBoundingClientRect();
+    const t=e.touches[0];
+    const mv=new THREE.Vector2(((t.clientX-r.left)/r.width)*2-1,-((t.clientY-r.top)/r.height)*2+1);
+    const rc=new THREE.Raycaster(); rc.setFromCamera(mv,cam);
+    const floor = new THREE.Plane(new THREE.Vector3(0,1,0),0);
+    const pt = new THREE.Vector3();
+    rc.ray.intersectPlane(floor, pt);
+    if(pt){ selObj.position.x = pt.x; selObj.position.z = pt.z; }
+    return;
+  }
+  if(e.touches.length===1 && !dragFurn){
+    const dx=e.touches[0].clientX-tch[0].clientX, dy=e.touches[0].clientY-tch[0].clientY;
+    rY+=dx*0.007;rX-=dy*0.007;rX=Math.max(0.05,Math.min(1.5,rX));
+  } else if(e.touches.length===2){
+    const pd=Math.hypot(tch[0].clientX-tch[1].clientX,tch[0].clientY-tch[1].clientY);
+    const cd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    dist=Math.max(100,Math.min(5000,dist-(cd-pd)*2));
+  }
+  tch=[...e.touches]; upCam();
+},{passive:false});
+c3.addEventListener('touchend',()=>{dragFurn=false;});
+
+function resetCam(){ rX=0.5;rY=0;dist=Math.max(900,(roomModel?roomModel.room.width_cm:900)*1.2);pX=0;pY=100;upCam(); }
+
+// ═══════════════════════════════════════════════════
+//  BUILD ROOM FROM MODEL
+// ═══════════════════════════════════════════════════
+function openDesigner(){
+  showScreen('scrDesigner');
+  buildRoomFromModel(roomModel);
+  buildFurniturePalette();
+  resetCam();
+}
+
+function buildRoomFromModel(model){
+  // Clear
+  while(roomGroup.children.length) roomGroup.remove(roomGroup.children[0]);
+  furnObjs.length = 0;
+
+  const W = model.room.width_cm, D = model.room.depth_cm, H = model.room.height_cm;
+
+  // Floor
+  const floorGeo = new THREE.PlaneGeometry(W, D);
+  const floorMat = new THREE.MeshPhongMaterial({color:0x1a2530, side:THREE.DoubleSide});
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI/2;
+  floor.receiveShadow = true;
+  roomGroup.add(floor);
+
+  // Floor grid
+  const grid = new THREE.GridHelper(Math.max(W,D), 20, 0x2a3545, 0x151c25);
+  grid.position.y = 0.5;
+  roomGroup.add(grid);
+
+  // Walls (4 sides, semi-transparent)
+  const wallMat = new THREE.MeshPhongMaterial({color:0x2a3545, transparent:true, opacity:0.35, side:THREE.DoubleSide});
+  const wallEdgeMat = new THREE.LineBasicMaterial({color:0x4fffb0, transparent:true, opacity:0.6});
+
+  const walls = [
+    {w:W, h:H, x:0, y:H/2, z:-D/2, ry:0},
+    {w:W, h:H, x:0, y:H/2, z:D/2,  ry:Math.PI},
+    {w:D, h:H, x:-W/2, y:H/2, z:0, ry:Math.PI/2},
+    {w:D, h:H, x:W/2,  y:H/2, z:0, ry:-Math.PI/2},
+  ];
+  walls.forEach(w=>{
+    const g = new THREE.PlaneGeometry(w.w, w.h);
+    const m = new THREE.Mesh(g, wallMat);
+    m.position.set(w.x, w.y, w.z); m.rotation.y = w.ry;
+    roomGroup.add(m);
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), wallEdgeMat);
+    e.position.set(w.x, w.y, w.z); e.rotation.y = w.ry;
+    roomGroup.add(e);
+  });
+
+  // Room dimension labels
+  document.getElementById('modelPill').textContent = `${model.room.width_m}×${model.room.depth_m}m`;
+
+  // Furniture from detections
+  model.furniture.forEach(f=>{
+    addFurnitureObj(f, true);
+  });
+  notify(`Room loaded: ${model.furniture.length} objects detected`);
+}
+
+function addFurnitureObj(f, fromDetection=false){
+  const geo = new THREE.BoxGeometry(f.def_w, f.def_h, f.def_d);
+  const mat = new THREE.MeshPhongMaterial({
+    color: f.color,
+    emissive: new THREE.Color(f.color).multiplyScalar(0.12),
+    shininess: 30,
+    transparent: true, opacity: 0.88
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true;
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:0.25}));
+  mesh.add(edges);
+
+  // Label
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(f.name, 128, 32);
+  const tex = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
+  sprite.scale.set(80, 20, 1);
+  sprite.position.y = f.def_h/2 + 15;
+  mesh.add(sprite);
+
+  mesh.name = f.name;
+  mesh.userData = { id: f.id || `u_${Date.now()}_${Math.random()}`, def: f };
+
+  if(fromDetection && f.position){
+    mesh.position.set(f.position.x, f.def_h/2, f.position.z);
+  } else {
+    mesh.position.set((Math.random()-.5)*100, f.def_h/2, (Math.random()-.5)*100);
+    if(roomModel){
+      if(!roomModel.furniture) roomModel.furniture = [];
+      roomModel.furniture.push({...f, id: mesh.userData.id, position:{x:mesh.position.x, z:mesh.position.z}});
+    }
+  }
+  if(f.rotation_deg) mesh.rotation.y = THREE.MathUtils.degToRad(f.rotation_deg);
+
+  scene.add(mesh);
+  furnObjs.push(mesh);
+}
+
+function buildFurniturePalette(){
+  const scroll = document.getElementById('furnScroll');
+  scroll.innerHTML = '';
+  FALLBACK_FURNS.forEach(f=>{
+    const el = document.createElement('div');
+    el.className = 'fc';
+    el.innerHTML = `<span class="fci">${f.icon}</span><span class="fcn">${f.name}</span>`;
+    el.onclick = ()=> addFurnitureObj({...f, id:`u_${Date.now()}`}, false);
+    scroll.appendChild(el);
+  });
+}
+
+// Selection
+function selectFurn(obj){
+  if(selObj) selObj.material.emissive.setHex(new THREE.Color(selObj.userData.def.color).multiplyScalar(0.12).getHex());
+  selObj = obj;
+  if(obj){
+    obj.material.emissive.setHex(0x4d9eff);
+    document.getElementById('selBar').classList.add('show');
+    document.getElementById('selName').textContent = obj.name;
+    document.getElementById('rotSlider').value = Math.round(obj.rotation.y*180/Math.PI)%360;
+    document.getElementById('rotVal').textContent = Math.round(obj.rotation.y*180/Math.PI)+'°';
+  }
+}
+function deselFurn(){
+  if(selObj) selObj.material.emissive.setHex(new THREE.Color(selObj.userData.def.color).multiplyScalar(0.12).getHex());
+  selObj = null;
+  document.getElementById('selBar').classList.remove('show');
+}
+function rotSel(v){
+  if(!selObj) return;
+  selObj.rotation.y = THREE.MathUtils.degToRad(+v);
+  document.getElementById('rotVal').textContent = Math.round(v)+'°';
+}
+function delSel(){
+  if(!selObj) return;
+  scene.remove(selObj);
+  const idx = furnObjs.indexOf(selObj);
+  if(idx>=0) furnObjs.splice(idx,1);
+  if(roomModel && roomModel.furniture){
+    roomModel.furniture = roomModel.furniture.filter(f=>f.id!==selObj.userData.id);
+  }
+  selObj = null;
+  document.getElementById('selBar').classList.remove('show');
+  notify('Removed');
+}
+
+// Tabs
+function switchTab(t){
+  document.querySelectorAll('.dtab').forEach((el,i)=>el.classList.toggle('active',['3d','fp'][i]===t));
+  document.getElementById('view3d').style.display = t==='3d'?'flex':'none';
+  document.getElementById('fpView').style.display = t==='fp'?'flex':'none';
+  document.getElementById('furnDrawer').style.display = t==='3d'?'block':'none';
+  if(t==='fp') setTimeout(renderFP, 50);
+  if(t==='3d') setTimeout(resize3d, 50);
+}
+
+// Floor plan
+function renderFP(){
+  if(!roomModel) return;
+  const c = document.getElementById('fpCanvas');
+  const ctx = c.getContext('2d');
+  c.width = c.clientWidth || 380;
+  c.height = c.clientHeight || 500;
+  const W = c.width, H = c.height, pad = 40;
+  ctx.fillStyle = '#0a0e13';
+  ctx.fillRect(0,0,W,H);
+
+  const rW = roomModel.room.width_cm;
+  const rD = roomModel.room.depth_cm;
+  const sc = Math.min((W-2*pad)/rW, (H-2*pad)/rD);
+  const cx = W/2, cy = H/2;
+  const toCv = (x,z) => ({x: cx + x*sc, y: cy + z*sc});
+
+  // Grid
+  ctx.strokeStyle = '#1e2d3d'; ctx.lineWidth = 0.5;
+  for(let x=0; x<=rW; x+=50){ const p=toCv(x-rW/2,-rD/2); const p2=toCv(x-rW/2,rD/2); ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p2.x,p2.y);ctx.stroke(); }
+  for(let z=0; z<=rD; z+=50){ const p=toCv(-rW/2,z-rD/2); const p2=toCv(rW/2,z-rD/2); ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p2.x,p2.y);ctx.stroke(); }
+
+  // Room outline
+  ctx.strokeStyle = '#4fffb0'; ctx.lineWidth = 2.5;
+  const tl = toCv(-rW/2, -rD/2), br = toCv(rW/2, rD/2);
+  ctx.strokeRect(tl.x, tl.y, br.x-tl.x, br.y-tl.y);
+
+  // Furniture
+  furnObjs.forEach(obj=>{
+    const d = obj.userData.def;
+    const col = '#'+new THREE.Color(d.color).getHexString();
+    const sx = cx + obj.position.x*sc, sy = cy + obj.position.z*sc;
+    const sw = d.def_w*sc, sd = d.def_d*sc;
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(obj.rotation.y);
+    ctx.fillStyle = col+'55'; ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+    ctx.fillRect(-sw/2,-sd/2,sw,sd); ctx.strokeRect(-sw/2,-sd/2,sw,sd);
+    ctx.fillStyle = col; ctx.font = '10px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(obj.name, 0, 3);
+    ctx.restore();
+  });
+
+  // Dimensions
+  ctx.fillStyle = '#4fffb0'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(`${roomModel.room.width_m} m`, cx, pad-12);
+  ctx.save(); ctx.translate(pad-16, cy); ctx.rotate(-Math.PI/2); ctx.fillStyle='#4d9eff'; ctx.fillText(`${roomModel.room.depth_m} m`,0,0); ctx.restore();
+
+  ctx.fillStyle = '#5a7090'; ctx.font = '9px monospace'; ctx.textAlign='left';
+  ctx.fillText(`FLOOR PLAN · ${furnObjs.length} objects`, pad, H-14);
+}
+
+function exportPNG(){
+  renderFP();
+  const a = document.createElement('a');
+  a.href = document.getElementById('fpCanvas').toDataURL('image/png');
+  a.download = 'room_floorplan.png';
+  a.click();
+  notify('PNG saved!');
+}
+function exportJSON(){
+  const data = {
+    room: roomModel.room,
+    furniture: furnObjs.map(o=>({
+      id: o.userData.id,
+      name: o.name,
+      x: Math.round(o.position.x),
+      z: Math.round(o.position.z),
+      rotation_deg: Math.round(o.rotation.y*180/Math.PI),
+      def_w: o.userData.def.def_w,
+      def_d: o.userData.def.def_d,
+      def_h: o.userData.def.def_h,
+    }))
+  };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download = 'room_layout.json';
+  a.click();
+  notify('JSON saved!');
+}
+
+// ═══════════════════════════════════════════════════
+//  AI MODAL
+// ═══════════════════════════════════════════════════
+function openAIModal(){ document.getElementById('aiModal').classList.add('show'); }
+function closeAIModal(){
+  document.getElementById('aiModal').classList.remove('show');
+  document.getElementById('aiResult').classList.remove('show');
+  document.getElementById('aiApplyBtn').style.display = 'none';
+  document.getElementById('aiStatus').textContent = '';
+  aiSuggestion = null;
+}
+
+document.querySelectorAll('#goalChips .gchip').forEach(c=>{
+  c.onclick = () => {
+    document.querySelectorAll('#goalChips .gchip').forEach(x=>x.classList.remove('sel'));
+    c.classList.add('sel');
+    document.getElementById('aiGoal').value = c.dataset.goal;
+  };
+});
+
+async function askAI(){
+  const goalEl = document.getElementById('aiGoal');
+  const goal = goalEl.value.trim() || document.querySelector('#goalChips .gchip.sel')?.dataset.goal || 'Arrange the room for better flow';
+  document.getElementById('aiStatus').textContent = '🧠 Ollama thinking... (may take 30-60s on CPU)';
+  document.getElementById('aiAskBtn').disabled = true;
+
+  // Build current room_model from actual furniture positions
+  const currentModel = {
+    room: roomModel.room,
+    furniture: furnObjs.map(o=>({
+      id: o.userData.id,
+      name: o.name,
+      position: {x: Math.round(o.position.x), z: Math.round(o.position.z)},
+      rotation_deg: Math.round(o.rotation.y*180/Math.PI),
+      def_w: o.userData.def.def_w,
+      def_d: o.userData.def.def_d,
+      def_h: o.userData.def.def_h,
+    })),
+  };
+
+  try{
+    const r = await fetch(`${API}/api/session/${SID}/ask_ai`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({goal, room_model: currentModel})
+    });
+    if(!r.ok) throw new Error((await r.json()).detail || 'AI error');
+    const d = await r.json();
+    aiSuggestion = d;
+    const result = document.getElementById('aiResult');
+    result.innerHTML = `<strong>💡 ${d.reasoning || 'Layout suggestion'}</strong><br/><br/>` +
+      (d.new_positions || []).map(p => `• <strong>${p.id}</strong> → (${p.x}, ${p.z}) rot ${p.rotation_deg||0}°<br/><em style="color:var(--mut)">${p.reason||''}</em>`).join('<br/>');
+    result.classList.add('show');
+    document.getElementById('aiStatus').textContent = `✓ Got ${(d.new_positions||[]).length} suggestions`;
+    if(d.new_positions && d.new_positions.length) document.getElementById('aiApplyBtn').style.display = 'block';
+  }catch(e){
+    document.getElementById('aiStatus').textContent = '✕ ' + e.message;
+  }
+  document.getElementById('aiAskBtn').disabled = false;
+}
+
+function applyAI(){
+  if(!aiSuggestion || !aiSuggestion.new_positions) return;
+  aiSuggestion.new_positions.forEach(p=>{
+    const obj = furnObjs.find(o => o.userData.id === p.id);
+    if(obj){
+      obj.position.x = p.x;
+      obj.position.z = p.z;
+      if(p.rotation_deg !== undefined) obj.rotation.y = THREE.MathUtils.degToRad(p.rotation_deg);
+    }
+  });
+  notify('AI layout applied!');
+  closeAIModal();
+  if(document.getElementById('fpView').style.display !== 'none') renderFP();
+}
+
+// init
+resize3d();
+</script>
+</body>
+</html>
